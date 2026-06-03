@@ -3,17 +3,22 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { Stars } from "@react-three/drei";
 import * as THREE from "three";
 
+const isMobileDevice = typeof window !== "undefined" && window.innerWidth <= 768;
 
 function InteractiveStars() {
   const starsRef = useRef();
+
   useFrame((state) => {
-    const targetX = state.pointer.y * 0.12;
-    const targetY = state.pointer.x * 0.12;
-    if (starsRef.current) {
-      starsRef.current.rotation.x += (targetX - starsRef.current.rotation.x) * 0.05;
-      starsRef.current.rotation.y += (targetY - starsRef.current.rotation.y) * 0.05;
-    }
+    if (!starsRef.current || isMobileDevice) return;
+
+    // ზუსტი Parallax ეფექტი: ვარსკვლავები რბილად მიყვებიან მაუსის კოორდინატებს
+    const targetX = state.pointer.y * 0.3;
+    const targetY = state.pointer.x * 0.3;
+
+    starsRef.current.rotation.x += (targetX - starsRef.current.rotation.x) * 0.05;
+    starsRef.current.rotation.y += (targetY - starsRef.current.rotation.y) * 0.05;
   });
+
   return (
     <group ref={starsRef}>
       <Stars radius={100} depth={50} count={600} factor={5} saturation={0} fade speed={0.4} />
@@ -23,9 +28,10 @@ function InteractiveStars() {
 
 function MeshWave({ isMobile }) {
   const meshRef = useRef();
-  const [xSegments, ySegments] = [75, 75];
+  const xSegments = 75;
+  const ySegments = 75;
 
-  const { positions } = useMemo(() => {
+  const positions = useMemo(() => {
     const count = (xSegments + 1) * (ySegments + 1);
     const pos = new Float32Array(count * 3);
 
@@ -41,10 +47,12 @@ function MeshWave({ isMobile }) {
         i++;
       }
     }
-    return { positions: pos };
-  }, []);
+    return pos;
+  }, [xSegments, ySegments]);
 
   useFrame((state) => {
+    if (!meshRef.current) return;
+
     const { clock, pointer } = state;
     const time = clock.getElapsedTime();
     const geo = meshRef.current.geometry;
@@ -56,13 +64,11 @@ function MeshWave({ isMobile }) {
         const posX = posAttr.getX(index);
         const posY = posAttr.getY(index);
 
-
         let z = Math.sin(posX * 0.5 + time * 1.2) * 0.4;
         z += Math.cos(posY * 0.6 + time * 1.0) * 0.3;
         z += Math.sin((posX + posY) * 0.3 + time * 1.5) * 0.2;
 
         const distanceToMouse = Math.sqrt(Math.pow(posX - pointer.x * 5, 2) + Math.pow(posY - pointer.y * 3, 2));
-
 
         if (distanceToMouse < 3.2 && pointer.y < 0) {
           z += (3.2 - distanceToMouse) * 0.45 * Math.sin(time * 4.5);
@@ -76,7 +82,6 @@ function MeshWave({ isMobile }) {
     meshRef.current.rotation.z = Math.sin(time * 0.05) * 0.05;
   });
 
-
   const meshPositionY = isMobile ? -1.2 : -2.5;
 
   return (
@@ -88,7 +93,6 @@ function MeshWave({ isMobile }) {
     </mesh>
   );
 }
-
 
 export default function App() {
   const [isMobile, setIsMobile] = useState(false);
@@ -103,12 +107,10 @@ export default function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-
   const cameraPositionZ = isMobile ? 6.5 : 7.5;
 
   return (
     <div className="app-root-wrapper">
-
       <div className="canvas-container">
         <Canvas camera={{ position: [0, 0, cameraPositionZ], fov: 65 }}>
           <ambientLight intensity={0.4} />
@@ -129,7 +131,6 @@ export default function App() {
           <button className="premium-btn">Explore Live Asset</button>
         </div>
       </div>
-
 
       <style>{`
         .app-root-wrapper, .app-root-wrapper * {
